@@ -1,0 +1,28 @@
+;; Static house facts in the Atomspace. The glass can be knocked down;
+;; the bag and candle are landmarks only, not action candidates yet.
+(room hallway)
+(room kitchen)
+(room living-room)
+(room bedroom)
+(place kitchen-table kitchen)
+(place glass kitchen-table)
+(place food-bowl kitchen)
+(place zip-tie kitchen)
+(place cardboard-box living-room)
+(place catnip-mouse bedroom)
+(stub paper-bag living-room)
+(stub candle kitchen)
+(resident tater-tot)
+(resident paxton)
+
+;; Every room opens onto the hallway. An action can take one travel tick.
+(= (nextRoom $from $to) (if (== $from hallway) $to hallway))
+(= (roomAt 0) hallway)
+(= (roomAt 1) kitchen)
+(= (roomAt 2) living-room)
+(= (roomAt 3) bedroom)
+
+;; Advance a seeded random stream exactly once per tick, regardless of action.
+(= (nextRandom $rng) (% (+ (* 1664525 $rng) 1013904223) 4294967296))
+(= (humanRoom $step $rng $old)
+    (if (== (% (- $step 1) 7) 0) (roomAt (% (floor-math (/ $rng 65536)) 4)) $old))

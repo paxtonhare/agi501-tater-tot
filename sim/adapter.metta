@@ -1,0 +1,48 @@
+;; Same integration as the trading agent, with one motivational subsystem.
+;; Goal order: (gInd gTrans gHelp gCurio gNovel gSelf gEthic gSoc).
+;; Drives affect candidate correlations, not the carried MetaMo state directly.
+(= (catStates)
+    ((subsystemState cat (motivation (0.60 0.50 0.7 0.7 0.4 0.7 0.7 0.7)
+                                    (0.5 0.5 0.5 0.5 0.5 0.5)))))
+(= (catStimulus $room $human $oldHuman ($h $c $a $m) ($zip $box $mouse) $glass)
+    (openPsiStimulus
+        (if (== $human $oldHuman) (/ (max $zip (max $box $mouse)) 150) 0.85)
+        (/ (- 100 $h) 100)
+        (if (and (== $glass table) (== $human kitchen)) 0.30 0.05)
+        (if (== $room $human) 0.10 0.20)))
+
+(= (reachWeight $task $room $human)
+    (if (== $room (taskRoom $task $human)) 1.0 0.86))
+(= (catAction $id $correlations $risk $delta) (action $id $correlations $risk $delta))
+(= (mealCandidate $room $human $h)
+    (let $need (* (/ $h 100) (reachWeight eat $room $human))
+        (catAction eat (0 0 $need 0 0 $need 0 0) 0.02 (0.005 0 0 0 0 0 0 0))))
+(= (toyCandidate $toy $room $human $curiosity $interest)
+    (let* (($want (* (/ $curiosity 100) (+ 0.35 (* 0.65 (/ $interest 100)))))
+           ($fit (* $want (reachWeight $toy $room $human))))
+        (catAction $toy (0 0 0 $fit (* $fit (/ $interest 100)) 0 0 0) 0.01
+                   (0 0.005 0 0 0 0 0 0))))
+(= (cuddleCandidate $room $human $affection)
+    (let $want (* (/ $affection 100) (reachWeight cuddle $room $human))
+        (catAction cuddle (0 0 $want 0 0 0 0 $want) 0.01 (0 0 0 0 0 0 0 0.005))))
+(= (knockCandidate $room $human $mischief)
+    (let $want (* (/ $mischief 100) (reachWeight knock $room $human))
+        (catAction knock (0 0 0 (* 0.6 $want) 0 $want 0 0)
+                   (if (== $human kitchen) 0.22 0.03) (0 0.005 0 0 0 0 0 0))))
+(= (catCandidates $room $human ($h $c $a $m) ($zip $box $mouse) $glass)
+    (let $ordinary ((mealCandidate $room $human $h) (cuddleCandidate $room $human $a)
+                    (toyCandidate zip-tie $room $human $c $zip)
+                    (toyCandidate cardboard-box $room $human $c $box)
+                    (toyCandidate catnip-mouse $room $human $c $mouse))
+        (if (== $glass table) (cons-atom (knockCandidate $room $human $m) $ordinary) $ordinary)))
+
+;; Finish mode restricts the menu, not the scorer. Hunger may still interrupt play.
+(= (taskMenu $remaining $active)
+    (if (== $remaining ()) ()
+        (let* ((($head $rest) (decons $remaining)) ($id (actionId $head))
+               ($tail (taskMenu $rest $active)))
+            (if (or (== $id $active) (and (== $id eat) (== (taskGoal $active) curiosity)))
+                (cons-atom $head $tail) $tail))))
+(= (chooseCat $states $stimulus $candidates $mode $active $work)
+    (let $menu (if (and (== $mode finish) (> $work 0)) (taskMenu $candidates $active) $candidates)
+        (runMetaMoCycleDefault (defaultMetaMoBimonad) $states $stimulus $menu () ())))
