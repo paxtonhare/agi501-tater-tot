@@ -1,6 +1,7 @@
 ;; Drives are 0..100; toy interest rises when not played with.
-(= (rise ($h $c $a $m))
-    ((min 100 (+ $h 7)) (min 100 (+ $c 6)) (min 100 (+ $a 5)) (min 100 (+ $m 4))))
+(= (rise ($h $c $a $m $t $l) $afterMeal)
+    ((min 100 (+ $h 7)) (min 100 (+ $c 6)) (min 100 (+ $a 5)) (min 100 (+ $m 4))
+     (riseTiredness $t) (riseLitter $l $afterMeal)))
 (= (recoverInterest $used $toy $interest)
     (if (== $used $toy) (max 0 (- $interest 25)) (min 100 (+ $interest 4))))
 (= (updateToys ($zip $box $mouse) $used)
@@ -29,10 +30,10 @@
 (= (duration catnip-mouse) 3)
 (= (duration cuddle) 2)
 (= (duration knock) 1)
-(= (relieve hunger ($h $c $a $m)) ((max 0 (- $h 63)) $c $a $m))
-(= (relieve curiosity ($h $c $a $m)) ($h (max 0 (- $c 63)) $a $m))
-(= (relieve affection ($h $c $a $m)) ($h $c (max 0 (- $a 63)) $m))
-(= (relieve mischief ($h $c $a $m)) ($h $c $a (max 0 (- $m 63))))
+(= (relieve hunger ($h $c $a $m $t $l)) ((max 0 (- $h 63)) $c $a $m $t $l))
+(= (relieve curiosity ($h $c $a $m $t $l)) ($h (max 0 (- $c 63)) $a $m $t $l))
+(= (relieve affection ($h $c $a $m $t $l)) ($h $c (max 0 (- $a 63)) $m $t $l))
+(= (relieve mischief ($h $c $a $m $t $l)) ($h $c $a (max 0 (- $m 63)) $t $l))
 
 ;; Only in-room work counts toward completion. Switching task restarts work.
 ;; Returns room, drives, toys, glass, open task, work count, physical action.

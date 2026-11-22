@@ -7,6 +7,7 @@
 (place kitchen-table kitchen)
 (place glass kitchen-table)
 (place food-bowl kitchen)
+(place litter-box hallway)
 (place zip-tie kitchen)
 (place cardboard-box living-room)
 (place catnip-mouse bedroom)
