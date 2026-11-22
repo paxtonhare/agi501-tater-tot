@@ -4,6 +4,8 @@ A Siberian Forest cat in a text-adventure version of Paxton's house. The house f
 
 See [RESULTS.md](RESULTS.md) for the preliminary-report numbers and what's missing.
 
+License: [MIT](LICENSE).
+
 ## Reproduce on Debian 12 (Linux)
 
 Run from a fresh checkout of this repository:
