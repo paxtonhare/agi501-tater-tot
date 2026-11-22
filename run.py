@@ -9,28 +9,39 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parent
-FIELDS = ("step room human_room hunger curiosity affection mischief action "
-          "goal task previous_task previous_work work glass").split()
-NUMBERS = "step hunger curiosity affection mischief previous_work work".split()
+DRIVES = "hunger curiosity affection mischief tiredness litter".split()
+FIELDS = ["step", "room", "human_room", *DRIVES, *(
+    "action goal task previous_task previous_work work glass".split())]
+NUMBERS = ["step", *DRIVES, "previous_work", "work"]
 TOYS = {"zip-tie", "cardboard-box", "catnip-mouse"}
 
 
 def summarize(rows):
     counts = dict(flip_flops=0, goal_flip_flops=0, toy_switches=0,
-                  allowed_play_to_eat=0, travel_replans=0, completed_tasks=0)
+                  allowed_play_to_eat=0, allowed_to_litter=0, woke_early=0,
+                  travel_replans=0, completed_tasks=0, sleep_sessions_completed=0, litter_trips=0)
     for row in rows:
         old, new = row["previous_task"], row["task"]
         if old != "none" and old != new:
             if not row["previous_work"]:
                 counts["travel_replans"] += 1
-            elif old in TOYS and new == "eat":
-                counts["allowed_play_to_eat"] += 1
             else:
-                counts["flip_flops"] += 1
-                kind = "toy_switches" if old in TOYS and new in TOYS else "goal_flip_flops"
-                counts[kind] += 1
+                if old == "sleep":
+                    counts["woke_early"] += 1
+                if new == "use-litter":
+                    counts["allowed_to_litter"] += 1
+                elif old in TOYS and new == "eat":
+                    counts["allowed_play_to_eat"] += 1
+                elif (old, new) != ("sleep", "eat"):
+                    counts["flip_flops"] += 1
+                    kind = "toy_switches" if old in TOYS and new in TOYS else "goal_flip_flops"
+                    counts[kind] += 1
         if row["action"] != "move" and row["work"] == 0:
             counts["completed_tasks"] += 1
+            if new == "sleep":
+                counts["sleep_sessions_completed"] += 1
+            elif new == "use-litter":
+                counts["litter_trips"] += 1
     return counts
 
 

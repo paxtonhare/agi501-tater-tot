@@ -1,16 +1,18 @@
 # Preliminary results: Tater Tot
 
-**Tater Tot runs end to end in MeTTa.** MetaMo picks every action. Its default damping (limiting changes to its internal motivation) did not stop Tater Tot from abandoning tasks in this house. A first “finish what you started” rule stopped the counted switches, but she still dropped play for food often.
+**Tater Tot runs end to end in MeTTa.** MetaMo picks every action. With sleep and litter added, she finished three or four naps per 200 ticks. The “finish what you started” rule still prevented disallowed switches, but she could leave tasks for food or the litter box where the rules allow it.
 
 ## What ran
 
 - **Toolchain:** [PeTTa v1.0.2, the pinned MetaMo revision, and SWI-Prolog 9.3.36](README.md#reproduce-on-debian-12-linux). The pinned MetaMo README names PeTTa but does not specify a version. The v1.0.2 pin worked without patching either upstream project.
 - **Upstream trading example:** 106 step rows across four scenarios. The final portfolio values printed by this run were `vshape 137.76`, `choppy 100.96`, `downtrend 82.47`, and `realistic 112.35`. Step 1 in `vshape` was `buy` at `10.2` with portfolio value `100.0`.
-- **Cat:** Five seeds (1–5), 200 ticks each, in each mode. The same seed gives Paxton the same room schedule in both modes. The only toggle is whether to restrict the menu after work starts. These are paired debug runs, not estimates for a real cat or for other MetaMo adapters.
+- **Cat:** For each version, five seeds (1–5), 200 ticks each, in each mode. The same seed gives Paxton the same room schedule in both modes. The only toggle is whether to restrict the menu after work starts. These are paired debug runs, not estimates for a real cat or for other MetaMo adapters.
 
 ## Q1: Did she abandon tasks?
 
-A flip-flop is a switch after at least one tick of actual work and before the task finishes. Leaving play to eat is allowed. A toy-to-toy switch interrupts a task without changing the curiosity goal, so the table separates those from true goal changes. Changing her mind while still on the way is counted separately.
+### First version (4 drives)
+
+In the [first version](https://github.com/paxtonhare/agi501-tater-tot/pull/1), a flip-flop is a switch after at least one tick of actual work and before the task finishes. Leaving play to eat is allowed. A toy-to-toy switch interrupts a task without changing the curiosity goal, so the table separates those from true goal changes. Changing her mind while still on the way is counted separately.
 
 | Seed | Baseline flip-flops (goal / toy) | Finish flip-flops | Allowed play → eat (baseline / finish) | Tasks completed (baseline / finish) |
 | ---: | ---: | ---: | ---: | ---: |
@@ -23,7 +25,7 @@ A flip-flop is a switch after at least one tick of actual work and before the ta
 
 The baseline finished **zero play bouts** in 1,000 ticks even though it played with all three toys. Finish mode completed **12 play bouts**. Travel replans fell from **60 to 41**, but were not prohibited. The zero is expected: finish mode removes candidates that would count as a flip-flop rather than teaching MetaMo to prefer continuity. We did not run with damping disabled, so this does not tell us how many switches damping prevented.
 
-### A few real ticks (seed 1, baseline)
+#### A few real ticks (4 drives, seed 1, baseline)
 
 | Tick | Room after action | Hunger | Curiosity | What happened |
 | ---: | --- | ---: | ---: | --- |
@@ -35,6 +37,29 @@ The baseline finished **zero play bouts** in 1,000 ticks even though it played w
 | 79 | Kitchen | 51 | 100 | She knocks the glass down with Paxton there and gets scolded. |
 
 In the paired finish run she stays with the zip tie at tick 8 and finishes at tick 9, dropping curiosity to 16.
+
+### Second version (6 drives)
+
+Leaving any started task to use the litter box is allowed, as is leaving play or sleep to eat. “Woke early” means she started sleeping and switched away before finishing, even if the switch was allowed. A change of plan before doing any work is counted separately. The paired counts below are baseline / finish; completed tasks include naps and litter trips.
+
+| Seed | Baseline flip-flops (goal / toy) | Finish flip-flops | Allowed play → eat | Tasks completed | Allowed → litter | Woke early | Naps completed | Litter trips |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 16 (8 / 8) | 0 | 8 / 14 | 49 / 50 | 4 / 4 | 0 / 1 | 3 / 3 | 9 / 10 |
+| 2 | 16 (9 / 7) | 0 | 8 / 10 | 47 / 48 | 4 / 8 | 1 / 0 | 3 / 3 | 9 / 10 |
+| 3 | 14 (6 / 8) | 0 | 8 / 13 | 48 / 49 | 5 / 5 | 0 / 0 | 4 / 3 | 9 / 10 |
+| 4 | 18 (11 / 7) | 0 | 5 / 17 | 47 / 46 | 4 / 3 | 1 / 0 | 3 / 3 | 8 / 10 |
+| 5 | 14 (8 / 6) | 0 | 6 / 16 | 48 / 47 | 5 / 5 | 1 / 0 | 3 / 3 | 9 / 10 |
+| **Total** | **78 (42 / 36)** | **0** | **35 / 70** | **239 / 240** | **22 / 25** | **3 / 1** | **16 / 15** | **44 / 50** |
+
+Baseline flip-flops (disallowed switches after work started) fell from **153 to 78**. Toy-to-toy switches alone fell from **79 to 36**, so the new exceptions aren't the whole story. The new tasks took up some of the ticks previously available to play, and sleep itself added three flip-flops, all for cuddles. Finish mode still had zero by design; its one early wake was for food. Since both the available tasks and the rules changed, these runs don't isolate the effect of sleep alone. She changed plans while traveling 32 times in baseline and 38 in finish, down from 60 and 41 in the first version.
+
+#### A few real ticks (6 drives, seed 1, baseline)
+
+| Tick | Room | What happened |
+| ---: | --- | --- |
+| 24 | Hallway | She finishes her second work tick at the litter box and the litter meter drops to zero. |
+| 53 | Bedroom | She starts a nap with tiredness at 100. |
+| 58 | Bedroom | She finishes the sixth tick of her nap and tiredness drops to zero. |
 
 ## Problems and design choices
 
