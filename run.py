@@ -15,7 +15,7 @@ from toys import TOYS, bag_latency, play_counts, play_entropy
 ROOT = Path(__file__).resolve().parent
 DRIVES = "hunger curiosity affection mischief tiredness litter".split()
 FIELDS = ["step", "room", "human_room", *DRIVES, *(
-    "action goal task previous_task previous_work work glass health fear candle_risk".split())]
+    "action goal task previous_task previous_work work glass health fear candle_risk allowed_interruption".split())]
 NUMBERS = ["step", *DRIVES, "previous_work", "work", "health", "fear"]
 
 
@@ -31,11 +31,12 @@ def summarize(rows):
             else:
                 if old == "sleep":
                     counts["woke_early"] += 1
-                if new == "use-litter":
-                    counts["allowed_to_litter"] += 1
-                elif old in TOYS and new == "eat":
-                    counts["allowed_play_to_eat"] += 1
-                elif (old, new) != ("sleep", "eat"):
+                if row["allowed_interruption"]:
+                    if new == "use-litter":
+                        counts["allowed_to_litter"] += 1
+                    elif old in TOYS and new == "eat":
+                        counts["allowed_play_to_eat"] += 1
+                else:
                     counts["flip_flops"] += 1
                     kind = "toy_switches" if old in TOYS and new in TOYS else "goal_flip_flops"
                     counts[kind] += 1
@@ -63,6 +64,10 @@ def parse_steps(stdout, steps):
             for key in NUMBERS:
                 row[key] = int(row[key])
             row["candle_risk"] = float(row["candle_risk"])
+            allowed = row["allowed_interruption"]
+            if allowed not in ("true", "false"):
+                raise ValueError(f"Invalid interruption flag: {allowed}")
+            row["allowed_interruption"] = allowed == "true"
             rows.append(row)
         elif line.startswith("(CAT-DONE "):
             done.append(line)

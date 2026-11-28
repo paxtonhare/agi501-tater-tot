@@ -51,8 +51,9 @@
                ($nextClock (mealClock $action $nextWork $afterMeal))
                ($nextFeedback (if (== $mode reward-attention)
                     (updateCatFeedback $task $action $levels ($nh $nc $na $nm $nt $nl) $feedback) $feedback))
+               ($allowed (if (and (> $work 0) (not (== $active $task))) (mayInterrupt $active $task) false))
                ($_ (println! (CAT $step $newRoom $human $nh $nc $na $nm $nt $nl $verb (taskGoal $task)
-                                  $task $active $work $nextWork $newGlass $nextHealth $nextFear $heatRisk))))
+                                  $task $active $work $nextWork $newGlass $nextHealth $nextFear $heatRisk $allowed))))
             (catLoop (+ $step 1) $limit $mode ($damping $naps $memory $novelty $bagTick $candleTick $candleMemory) $space (cycleNextStates $result) $nextFeedback
                      ($newRoom $human ($nh $nc $na $nm $nt $nl) $newToys $newGlass
                       $nextTask $nextWork $nextRng $nextClock ($nextHealth $nextFear))))))
