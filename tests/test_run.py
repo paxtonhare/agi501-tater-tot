@@ -58,7 +58,7 @@ class MeasurementTests(unittest.TestCase):
         self.assertEqual(counts["woke_early"], 0)
 
     def test_incomplete_or_nondeterministic_output_is_rejected(self):
-        line = "(CAT 1 kitchen hallway 9 10 11 12 13 14 move hunger eat none 0 0 table)\n"
+        line = "(CAT 1 kitchen hallway 9 10 11 12 13 14 move hunger eat none 0 0 table 100 0 0)\n"
         parsed = parse_steps(line + "(CAT-DONE 1)\n", 1)[0]
         self.assertEqual((parsed["task"], parsed["tiredness"], parsed["litter"]), ("eat", 13, 14))
         for bad in (line, line * 2 + "(CAT-DONE 1)\n", line + "(CAT-DONE 2)\n"):
