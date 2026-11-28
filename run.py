@@ -47,6 +47,12 @@ def summarize(rows):
     return counts
 
 
+def knock_counts(rows):
+    """Count physical attempts; a travel tick toward the glass is not an attempt."""
+    return dict(present=sum(row["action"] == "knock-scolded" for row in rows),
+                absent=sum(row["action"] == "knock" for row in rows))
+
+
 def parse_steps(stdout, steps):
     rows, done = [], []
     for line in stdout.splitlines():
@@ -82,10 +88,10 @@ def run_metta(entry_source):
     return result.stdout
 
 
-def run(seed, steps, mode, *, damping="on", naps="on"):
-    if damping not in {"on", "off"} or naps not in {"on", "off"}:
-        raise ValueError("damping and naps must be on or off")
-    stdout = run_metta(f"!(import! &self run)\n!(startCatConfigured {seed} {steps} {mode} {damping} {naps})\n")
+def run(seed, steps, mode, *, damping="on", naps="on", memory="off"):
+    if any(flag not in {"on", "off"} for flag in (damping, naps, memory)):
+        raise ValueError("damping, naps and memory must be on or off")
+    stdout = run_metta(f"!(import! &self run)\n!(startCatConfigured {seed} {steps} {mode} {damping} {naps} {memory})\n")
     return parse_steps(stdout, steps)
 
 
@@ -96,20 +102,24 @@ def main():
     parser.add_argument("--mode", choices=("baseline", "finish", "reward-attention"), default="baseline")
     parser.add_argument("--damping", choices=("on", "off"), default="on")
     parser.add_argument("--naps", choices=("on", "off"), default="on")
+    parser.add_argument("--memory", choices=("on", "off"), default="off")
     parser.add_argument("--out", type=Path, default=Path("runs"))
     args = parser.parse_args()
     if not 0 <= args.seed < 2**32 or args.steps < 1:
         parser.error("seed must be in [0, 2^32) and steps must be positive")
     try:
-        rows = run(args.seed, args.steps, args.mode, damping=args.damping, naps=args.naps)
+        rows = run(args.seed, args.steps, args.mode, damping=args.damping, naps=args.naps, memory=args.memory)
     except ValueError as exc:
         parser.exit(1, f"{exc}\n")
     summary = dict(picker="MetaMo", seed=args.seed, steps=args.steps, mode=args.mode,
-                   damping=args.damping, naps=args.naps, bouts=summarize_bouts(bout_lengths(rows)), **summarize(rows))
+                   damping=args.damping, naps=args.naps, memory=args.memory, knocks=knock_counts(rows),
+                   bouts=summarize_bouts(bout_lengths(rows)), **summarize(rows))
     args.out.mkdir(exist_ok=True, parents=True)
     suffix = "" if args.damping == "on" else "-damping-off"
     if args.naps == "off":
         suffix += "-naps-off"
+    if args.memory == "on":
+        suffix += "-memory-on"
     stem = args.out / f"{args.mode}{suffix}-{args.seed}-{args.steps}"
     with stem.with_suffix(".csv").open("w", newline="", encoding="utf-8") as file:
         writer = csv.DictWriter(file, FIELDS)
