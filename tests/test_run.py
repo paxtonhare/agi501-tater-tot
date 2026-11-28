@@ -3,14 +3,15 @@ import unittest
 from run import DRIVES, parse_steps, run, summarize
 
 
-def row(old, new, prior, action="move", work=0):
-    return dict(previous_task=old, task=new, previous_work=prior, action=action, work=work)
+def row(old, new, prior, action="move", work=0, *, allowed=False):
+    return dict(previous_task=old, task=new, previous_work=prior, action=action, work=work,
+                allowed_interruption=allowed)
 
 
 class MeasurementTests(unittest.TestCase):
     def test_distinguishes_bad_switches_from_hunger_priority_and_travel(self):
         counts = summarize([
-            row("eat", "zip-tie", 1), row("zip-tie", "eat", 1),
+            row("eat", "zip-tie", 1), row("zip-tie", "eat", 1, allowed=True),
             row("zip-tie", "catnip-mouse", 1), row("cuddle", "eat", 0),
             row("eat", "eat", 2, "eat"), row("none", "cuddle", 0, "cuddle", 1),
         ])
@@ -22,7 +23,7 @@ class MeasurementTests(unittest.TestCase):
     def test_litter_can_interrupt_any_other_started_task(self):
         for old in ("eat", "zip-tie", "cardboard-box", "catnip-mouse", "cuddle", "knock", "sleep"):
             with self.subTest(old=old):
-                counts = summarize([row(old, "use-litter", 1)])
+                counts = summarize([row(old, "use-litter", 1, allowed=True)])
                 self.assertEqual(counts["allowed_to_litter"], 1)
                 self.assertEqual(counts["woke_early"], int(old == "sleep"))
                 self.assertEqual(counts["flip_flops"], 0)
@@ -30,8 +31,9 @@ class MeasurementTests(unittest.TestCase):
     def test_sleep_interruptions(self):
         for new in ("eat", "use-litter", "zip-tie", "cuddle", "knock"):
             with self.subTest(new=new):
-                counts = summarize([row("sleep", new, 2)])
-                forbidden = int(new not in {"eat", "use-litter"})
+                allowed = new in {"eat", "use-litter"}
+                counts = summarize([row("sleep", new, 2, allowed=allowed)])
+                forbidden = int(not allowed)
                 self.assertEqual(counts["flip_flops"], forbidden)
                 self.assertEqual(counts["goal_flip_flops"], forbidden)
                 self.assertEqual(counts["allowed_play_to_eat"], 0)
@@ -58,9 +60,10 @@ class MeasurementTests(unittest.TestCase):
         self.assertEqual(counts["woke_early"], 0)
 
     def test_incomplete_or_nondeterministic_output_is_rejected(self):
-        line = "(CAT 1 kitchen hallway 9 10 11 12 13 14 move hunger eat none 0 0 table 100 0 0)\n"
+        line = "(CAT 1 kitchen hallway 9 10 11 12 13 14 move hunger eat none 0 0 table 100 0 0 false)\n"
         parsed = parse_steps(line + "(CAT-DONE 1)\n", 1)[0]
         self.assertEqual((parsed["task"], parsed["tiredness"], parsed["litter"]), ("eat", 13, 14))
+        self.assertIs(parsed["allowed_interruption"], False)
         for bad in (line, line * 2 + "(CAT-DONE 1)\n", line + "(CAT-DONE 2)\n"):
             with self.assertRaises(ValueError):
                 parse_steps(bad, 1)

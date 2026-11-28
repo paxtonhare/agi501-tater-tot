@@ -158,6 +158,8 @@ The candle appeared in the kitchen at tick 100, with no bag and no scolding reca
 | Off | On | 6 / 441 | 0 / 63 | 1 | 100, 100, 100, 80, 100 |
 | Off | Off | 6 / 441 | 0 / 63 | 1 | 100, 100, 100, 80, 100 |
 
+Eating after an unfinished candle sniff no longer counts as a flip-flop, matching the simulator's interruption rule.
+
 We exclude the first singe tick from both windows. If no singe happens, all ticks since the candle appeared stay in the before window. Counts before/after aren't directly comparable without the time windows: when novelty was off, only seed 4 was singed (tick 137), so four seeds never entered the after window.
 
 **Log, seed 1, novelty and recall on:** Tick 101: she sniffs (risk 0.14). Tick 102: she singes herself (health 80, fear 100). Tick 103: the candle's risk is 0.90 and she heads toward bed. **Surprise:** even with recall, she sometimes returned. With novelty on and recall off, all five seeds reached zero health. The sim runs to the end at zero health, so it measures injury, not death.

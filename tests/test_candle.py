@@ -1,7 +1,7 @@
 import unittest
 
 from candle import candle_counts
-from run import run, run_metta
+from run import run, run_metta, summarize
 
 
 class CandleTests(unittest.TestCase):
@@ -30,6 +30,17 @@ class CandleTests(unittest.TestCase):
         self.assertAlmostEqual(next_tick["candle_risk"], 0.90)
         counts = candle_counts(rows, 100)
         self.assertEqual((counts["before"], counts["first_singe"], counts["post_ticks"]), (1, 102, 3))
+
+    def test_food_interrupting_a_candle_sniff_is_not_a_flip_flop(self):
+        rows = run(1, 145, "baseline", candle_tick=100)
+        sniff, meal = rows[-2:]
+        self.assertEqual((sniff["action"], sniff["work"]), ("inspect-candle", 1))
+        self.assertEqual((meal["previous_task"], meal["previous_work"], meal["task"]),
+                         ("inspect-candle", 1, "eat"))
+        counts = summarize([sniff, meal])
+        self.assertEqual(counts["flip_flops"], 0)
+        self.assertEqual(counts["goal_flip_flops"], 0)
+        self.assertEqual(counts["allowed_play_to_eat"], 0)
 
     def test_no_singe_keeps_all_observation_time_in_before_window(self):
         rows = [dict(step=tick, health=100, action=act) for tick, act in enumerate(
