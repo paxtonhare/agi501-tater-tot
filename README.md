@@ -2,7 +2,7 @@
 
 A Siberian Forest cat in a text-adventure version of Paxton's house. The house facts live in a MeTTa Atomspace (a store for symbolic facts). PeTTa runs the MeTTa code; MetaMo appraises the situation, scores possible actions, and picks one each tick. No LLM, API key, or network call is used during the simulation.
 
-See [RESULTS.md](RESULTS.md) for the preliminary-report numbers and what's missing.
+See [RESULTS.md](RESULTS.md) for the AGI 501 results and how to interpret them.
 
 License: [MIT](LICENSE).
 
@@ -29,19 +29,19 @@ mkdir -p runs
 grep 'TRADER FINAL' runs/trading.log
 ```
 
-Run all 15 Q1 cat trials (five paired seeds in each mode):
+After installing the Debian packages above, rerun the final-report matrix (60 trials). The script calls `setup.sh` if the toolchain is missing:
 
 ```sh
-for seed in 1 2 3 4 5; do
-  for mode in baseline finish reward-attention; do
-    python3 run.py --seed "$seed" --steps 200 --mode "$mode" || exit 1
-  done
-done
+python3 experiments.py --jobs 3
 ```
 
-Each run writes `runs/<mode>-<seed>-<steps>.csv` and a JSON summary with the same stem. The CSV records end-of-tick room and drives, Paxton's room, action (`move` if traveling), chosen task and its goal, prior task, work counts, and glass status. `work=0` after a non-move action means the task completed. `--out` changes the destination. Identical seeds replay the same schedule of Paxton's room choices in all three modes. The JSON `bouts` field gives the count, total work ticks and mean length per drive. A bout starts at the first work tick and ends at completion or a switch; the measured part of a bout still open at the last tick is included. Travel does not count.
+Read `runs/experiments/summary.md` and find individual CSV and JSON files in the condition subdirectories.
+
+Each run writes `runs/<mode>-<seed>-<steps>.csv` and a JSON summary with the same stem. The CSV records end-of-tick room and drives, Paxton's room, action (`move` if traveling), chosen task and its goal, prior task, work counts, glass status, health, fear, and the candle candidate's risk before the action. `work=0` after a non-move action means the task completed. `--out` changes the destination. Identical seeds replay the same schedule of Paxton's room choices across conditions. Non-default flags add a suffix to the mode in the output filename. The JSON `bouts` field gives the count, total work ticks and mean length per drive. A bout starts at the first work tick and ends at completion or a switch; the measured part of a bout still open at the last tick is included. Travel does not count.
 
 Use `--damping off` to bypass only MetaMo's homeostatic damping (which shrinks goal updates near an internal safety boundary). It still checks stability, blends states, and projects back into the safe region. Use `--naps off` to remove sleep from the menu and hold tiredness at zero, including for appraisal. Both switches default to `on`.
+
+Use `--memory on` to recall scoldings when scoring the knock candidate, and `--novelty off` to remove the candidate's novelty-goal (`gNovel`) contribution without disabling curiosity or toy interest. Use `--bag-tick 100` or `--candle-tick 100` to enable the corresponding prop from tick 100. Heat and short-lived fear count even with recall off; `--candle-memory on` adds remembered singes independently of scolding recall. Both prop arrivals and both types of recall are off by default.
 
 ## How it works
 
