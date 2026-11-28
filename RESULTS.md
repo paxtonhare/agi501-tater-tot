@@ -1,12 +1,12 @@
-# Preliminary results: Tater Tot
+# AGI 501 final results: Tater Tot
 
-**Tater Tot runs end to end in MeTTa.** MetaMo picks every action. With sleep and litter added, she finished three or four naps per 200 ticks. The “finish what you started” rule still prevented disallowed switches, but she could leave tasks for food or the litter box where the rules allow it.
+**MetaMo picks every action.** The finish rule eliminated disallowed switches by design. Damping barely changed this cat's behavior; removing naps increased switching. Scolding recall reduced knocks modestly, while singe recall roughly halved repeat candle approaches with novelty on. The earlier four-drive run is historical; the [rerun script](experiments.py) reproduces the current six-drive matrix and writes the summary tables.
 
 ## What ran
 
 - **Toolchain:** [PeTTa v1.0.2, the pinned MetaMo revision, and SWI-Prolog 9.3.36](README.md#reproduce-on-debian-12-linux). The pinned MetaMo README names PeTTa but does not specify a version. The v1.0.2 pin worked without patching either upstream project.
 - **Upstream trading example:** 106 step rows across four scenarios. The final portfolio values printed by this run were `vshape 137.76`, `choppy 100.96`, `downtrend 82.47`, and `realistic 112.35`. Step 1 in `vshape` was `buy` at `10.2` with portfolio value `100.0`.
-- **Cat:** For each version, five seeds (1–5), 200 ticks each, in each mode. The same seed gives Paxton the same room schedule in both modes. The only toggle is whether to restrict the menu after work starts. These are paired debug runs, not estimates for a real cat or for other MetaMo adapters.
+- **Cat:** For each version, five seeds (1–5), 200 ticks each, in each mode. The same seed gives Paxton the same room schedule across conditions. Each comparison changes only the setting described below unless explicitly labeled as a version change. These are paired debug runs, not estimates for a real cat or for other MetaMo adapters.
 
 ## Q1: Did she abandon tasks?
 
@@ -99,15 +99,73 @@ Mean bout lengths below pool work ticks and bout counts across seeds. A bout sta
 | 15–17 | She plays with the catnip mouse twice, then heads for food with hunger at 81. Attention didn't make her finish playing. |
 | 18–23 | She stops at the litter box, then goes to the kitchen and finishes eating. Hunger falls from 100 to 37. |
 
-## Problems and design choices
+### Damping on vs off
 
-- Debian's SWI-Prolog 9.0.4 reported `` source_sink `library(janus)' does not exist `` and then `Unknown procedure: py_call/2`. Janus lets MeTTa call MetaMo's NumPy helpers. A first source build also failed with `No source for some required packages` when the package was called `janus` instead of `swipy`. Building 9.3.36 with `swipy` fixed it. `LC_ALL=C.UTF-8` avoids the `Illegal multibyte Sequence` warnings seen on the initial attempt.
-- The trading agent uses two motivational subsystems that must agree. This slice uses one, via the same default cycle API. Cat needs feed the candidate scores; MetaMo's internal goals and mood-like weights carry over between steps. Its damping limits internal updates; it is not a lock on the previously selected task.
-- Toy interest drops on every play tick, but curiosity drops only when the whole bout finishes. That makes trying a fresh toy tempting before the current bout is done. This trade-off is in our adapter and world rules, not just in MetaMo.
+MetaMo's [homeostatic damping](https://github.com/iCog-Labs-Dev/MetaMo/blob/bf97e50a68aa5059457092dfbe70699b7dd1dbe2/dynamics/stability.metta) shrinks updates to its internal goal weights near a safety boundary. The switch replaces just that hook with one that returns the update unchanged. It leaves caution, projection (moving weights back inside limits), checks, fallback and blending in place. It does not change the current tick's menu.
 
-## What remains
+| Damping | Goal / toy switches | Eat | Play | Cuddle | Knock | Sleep | Litter |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| On | 42 / 36 | 2.975 | 1.000 | 1.955 | 1.000 | 5.632 | 2.000 |
+| Off | 42 / 36 | 2.975 | 1.000 | 1.955 | 1.000 | 5.632 | 2.000 |
 
-- **Q1:** The soft preference comparison is above. Next, compare damping on and off with the same baseline adapter and isolate the effect of removing naps.
-- **Q2:** Store each scolding as an Atomspace event with time, action and human presence. Let recalled events affect candidate risk. Compare knock rates with and without memory, split by whether Paxton is present and the glass is available. Current presence changes risk directly; it is not learned.
-- **Q3:** Toggle MetaMo's novelty contribution separately from toy interest. Measure the share of play per toy, ticks to first bag interaction, and candle approach rate. No novelty toggle has been implemented or tested yet.
-- **Paper bag and candle:** Both are location hooks only. Add a scheduled mid-run bag arrival. For the candle, model heat as initial risk, then a singe that lowers health and raises fear, plus a memory that makes repeat approaches less appealing.
+Bout means pool actual work ticks per bout, not walks. **Surprise:** only one world log row changed. At seed 5, tick 200, damping on sent her toward Paxton, while damping off made her play with the zip tie. That was one extra one-tick bout, not a flip-flop. This result is about the goal-update hook in this adapter, not about removing all stabilization.
+
+### Naps off
+
+We held tiredness at zero before appraisal (MetaMo's read of the situation) and removed the sleep candidate. The other drives kept their usual rules. Shares use all 1,000 ticks, with travel separate rather than crediting it to the pursued drive.
+
+| Naps | Goal / toy switches | Hunger | Curiosity | Affection | Mischief | Tiredness | Litter | Travel |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| On | 42 / 36 | 23.8% | 12.9% | 13.1% | 3.6% | 10.7% | 8.8% | 27.1% |
+| Off | 55 / 50 | 25.5% | 15.9% | 14.5% | 4.2% | 0.0% | 8.7% | 31.2% |
+
+**Log, seed 1:** At tick 53, in the baseline she started a nap with tiredness at 100. Without naps she ate instead. **Surprise:** the largest increase was travel (+4.1 points), not play (+3.0). Litter work barely changed.
+
+## Q2: Did she remember being scolded?
+
+Each scolding becomes an Atomspace fact, for example `(cat-event 20 scolding knock true)` for seed 1 at tick 20: she knocked the glass and Paxton was in the kitchen. Recall adds 0.18 to the knock candidate's risk per scolding if Paxton is there now, or 0.06 if he isn't, up to four events. Both settings record events; only memory on reads them for scoring. A knock attempt is an actual knock, not a walk toward the glass.
+
+| Seed | Recall off: present / absent | Recall on: present / absent |
+| --- | ---: | ---: |
+| 1 | 2 / 6 | 2 / 6 |
+| 2 | 2 / 5 | 1 / 4 |
+| 3 | 2 / 5 | 1 / 5 |
+| 4 | 0 / 7 | 0 / 7 |
+| 5 | 0 / 7 | 0 / 7 |
+| **Total** | **6 / 30** | **4 / 29** |
+
+**Surprise:** recall did not deter every repeat, and seeds 4 and 5 never got scolded, so there was nothing to recall. These are counts, not probabilities given an available glass: earlier knocks can change later opportunities.
+
+## Q3: Did novelty help her discover the paper bag?
+
+The bag appeared in the living room at tick 100 in both conditions. Novelty off zeroed each candidate's `gNovel` correlation (how strongly the action serves the novelty goal), including its contribution to the scorer's exploration bonus. It kept the separate curiosity drive, toy boredom and environmental novelty observation intact. The denominator for each toy count is the full run; latency starts at tick 100 and ends when she is in the living room pursuing the bag, not when she first walks in that direction.
+
+| Novelty | Zip tie | Box | Mouse | Bag | Entropy (bits) | Ticks to bag, seeds 1–5 |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| On | 69 | 30 | 25 | 14 | 1.760 | 48, 24, 22, 24, 33 |
+| Off | 12 | 2 | 0 | 0 | 0.592 | No arrivals by tick 200 |
+
+Entropy tells how evenly she spread play: 0 means one toy got all play, and 2 means four toys got equal play. **Log, seed 1:** At tick 148 she stopped playing with the box and played with the bag in the same room. **Surprise:** the effect wasn't just a different toy mix; play itself fell from 138 ticks to 14. This tests the novelty input for all toys, not a bonus unique to the bag.
+
+## Candle: Did a singe deter another approach?
+
+The candle appeared in the kitchen at tick 100, with no bag and no scolding recall. Heat starts its candidate risk at 0.14. The first in-room work tick is an approach (a sniff); the second gets too close. That records a singe, subtracts 20 health down to zero, and raises fear to 100. Fear adds risk in both memory settings and drops by 10 each non-singe tick. Recall on adds 0.26 risk per remembered singe up to three events; total candle risk is capped at 1. Neither risk source forces a choice.
+
+| Novelty | Singe recall | Approaches / ticks before first singe | Approaches / ticks after | Total singes | Final health, seeds 1–5 |
+| --- | --- | ---: | ---: | ---: | --- |
+| On | On | 6 / 43 | 14 / 457 | 17 | 20, 40, 20, 40, 40 |
+| On | Off | 6 / 43 | 30 / 457 | 34 | 0, 0, 0, 0, 0 |
+| Off | On | 6 / 441 | 0 / 63 | 1 | 100, 100, 100, 80, 100 |
+| Off | Off | 6 / 441 | 0 / 63 | 1 | 100, 100, 100, 80, 100 |
+
+We exclude the first singe tick from both windows. If no singe happens, all ticks since the candle appeared stay in the before window. Counts before/after aren't directly comparable without the time windows: when novelty was off, only seed 4 was singed (tick 137), so four seeds never entered the after window.
+
+**Log, seed 1, novelty and recall on:** Tick 101: she sniffs (risk 0.14). Tick 102: she singes herself (health 80, fear 100). Tick 103: the candle's risk is 0.90 and she heads toward bed. **Surprise:** even with recall, she sometimes returned. With novelty on and recall off, all five seeds reached zero health. The sim runs to the end at zero health, so it measures injury, not death.
+
+## Where MeTTa/Hyperon fit well vs caused friction
+
+- **Facts and memory fit well.** Rooms, objects, scoldings and singes use the same fact-and-pattern style. `match` retrieves the event ticks without teaching the scorer about event storage. This repo tested PeTTa, not Hyperon's reference runtime. The pinned PeTTa did not support the upstream example's `(new-space)` call; it treated it as an unevaluated list. A named space with explicit clearing at run start worked.
+- **Install.** Debian's SWI-Prolog 9.0.4 could not load `library(janus)` or find `py_call/2`. Janus is the bridge to MetaMo's NumPy helpers. Building pinned SWI-Prolog 9.3.36 with `swipy` (not `janus` as the package name) worked. `LC_ALL=C.UTF-8` handles the multibyte characters in the upstream source.
+- **Debugging.** Import order mattered: loading the adapter before its new damping helper made a decision expression return no result. PeTTa could exit successfully without a full trace, so Python checks for each expected tick and the final marker rather than trusting the exit code alone.
+- **Performance.** Even one cat inherits MetaMo's appraisal, validation and state-blending work every tick. The 60-trial rerun took about four minutes with three workers on the test VM, not counting setup. The workers run in independent processes and don't share memory. We didn't profile the engine or compare runtimes.
+- **Scoring.** Goal-update damping is not a task lock. Candidate risk is a penalty, not a veto, and it is weighted by MetaMo's current state. Toy interest drops on every play tick, but curiosity drops only when a bout finishes. That interaction is a rule of this cat, not a general result about MetaMo.
