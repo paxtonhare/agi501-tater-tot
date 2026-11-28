@@ -61,6 +61,44 @@ Baseline flip-flops (disallowed switches after work started) fell from **153 to 
 | 53 | Bedroom | She starts a nap with tiredness at 100. |
 | 58 | Bedroom | She finishes the sixth tick of her nap and tiredness drops to zero. |
 
+### Follow-up: reward + attention (6 drives)
+
+`--mode reward-attention` never removes a candidate. Starting work captures attention for that task; it keeps 80% of its strength each tick on the same task. A different destination drops the old focus. Switching can discount an alternative's goal correlations by up to 22%. When work lowers a drive, the amount relieved (as a share of 100) becomes a reward for that task; on ticks with no relief it keeps 65% of its strength. A full-strength reward can boost that task's goal correlations by up to 50%. These correlations tell MetaMo how much an action serves each goal. MetaMo's global stimulus, risk, and default damping (which limits updates to its internal goals) are unchanged. The reward and attention settings were tested together, so this comparison doesn't separate their effects.
+
+Five paired seeds (1–5), 200 ticks per seed and mode. Baseline and finish reproduced the earlier goal/toy counts for every seed.
+
+| Mode | Goal flip-flops | Toy flip-flops | Total | Travel replans | Allowed play → eat | Tasks completed |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Baseline | 42 | 36 | 78 | 32 | 35 | 239 |
+| Finish | 0 | 0 | 0 | 38 | 70 | 240 |
+| Reward + attention | 42 | 16 | 58 | 38 | 37 | 236 |
+
+| Seed | Reward + attention (goal / toy) |
+| ---: | ---: |
+| 1 | 6 / 3 |
+| 2 | 12 / 3 |
+| 3 | 9 / 2 |
+| 4 | 8 / 4 |
+| 5 | 7 / 4 |
+
+Mean bout lengths below pool work ticks and bout counts across seeds. A bout starts once she does work on a task and ends when she finishes or switches. Travel does not count; the work already done in a bout open at tick 200 does.
+
+| Mode | All bouts (count) | Play | Eat | Cuddle | Knock | Sleep | Litter |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Baseline | 1.94 (375) | 1.00 | 2.98 | 1.96 | 1.00 | 5.63 | 2.00 |
+| Finish | 2.17 (338) | 1.40 | 2.98 | 2.00 | 1.00 | 5.71 | 2.00 |
+| Reward + attention | 2.17 (343) | 1.63 | 2.99 | 2.00 | 1.00 | 6.00 | 2.00 |
+
+**What surprised us:** The soft preference cut toy switches from 36 to 16, but goal switches still totaled 42. Play bouts averaged more work ticks than in finish mode, which still allows food and litter interruptions. Reward arrives only after a task relieves a drive, so it can't directly reward the first tick of an unfinished play bout. The toy's falling interest can still beat the attention bonus. In a smoke trial, putting the switching cost into MetaMo's risk input instead (adding up to 0.12 risk) produced exactly the same 200 action rows as baseline for seed 1; the reported experiment discounts expected payoff instead of treating reorienting as danger.
+
+#### A few real ticks (seed 1, reward + attention)
+
+| Tick | What happened |
+| ---: | --- |
+| 7–9 | She plays with the zip tie for two ticks, then leaves for the box. In baseline she leaves after one; in finish mode she stays for all three. |
+| 15–17 | She plays with the catnip mouse twice, then heads for food with hunger at 81. Attention didn't make her finish playing. |
+| 18–23 | She stops at the litter box, then goes to the kitchen and finishes eating. Hunger falls from 100 to 37. |
+
 ## Problems and design choices
 
 - Debian's SWI-Prolog 9.0.4 reported `` source_sink `library(janus)' does not exist `` and then `Unknown procedure: py_call/2`. Janus lets MeTTa call MetaMo's NumPy helpers. A first source build also failed with `No source for some required packages` when the package was called `janus` instead of `swipy`. Building 9.3.36 with `swipy` fixed it. `LC_ALL=C.UTF-8` avoids the `Illegal multibyte Sequence` warnings seen on the initial attempt.
@@ -69,7 +107,7 @@ Baseline flip-flops (disallowed switches after work started) fell from **153 to 
 
 ## What remains
 
-- **Q1:** Compare the hard menu rule with a softer preference for the current task. Try permitting play-to-eat only above a hunger threshold; report travel churn, unfinished bouts, and hunger alongside flip-flops. If testing damping itself, compare it on and off with the same adapter.
+- **Q1:** The soft preference comparison is above. Next, compare damping on and off with the same baseline adapter and isolate the effect of removing naps.
 - **Q2:** Store each scolding as an Atomspace event with time, action and human presence. Let recalled events affect candidate risk. Compare knock rates with and without memory, split by whether Paxton is present and the glass is available. Current presence changes risk directly; it is not learned.
 - **Q3:** Toggle MetaMo's novelty contribution separately from toy interest. Measure the share of play per toy, ticks to first bag interaction, and candle approach rate. No novelty toggle has been implemented or tested yet.
 - **Paper bag and candle:** Both are location hooks only. Add a scheduled mid-run bag arrival. For the candle, model heat as initial risk, then a singe that lowers health and raises fear, plus a memory that makes repeat approaches less appealing.
