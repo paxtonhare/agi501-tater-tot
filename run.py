@@ -8,6 +8,8 @@ from pathlib import Path
 import subprocess
 import tempfile
 
+from bouts import bout_lengths, summarize_bouts
+
 ROOT = Path(__file__).resolve().parent
 DRIVES = "hunger curiosity affection mischief tiredness litter".split()
 FIELDS = ["step", "room", "human_room", *DRIVES, *(
@@ -61,7 +63,8 @@ def parse_steps(stdout, steps):
     return rows
 
 
-def run(seed, steps, mode):
+def run_metta(entry_source):
+    """Execute a temporary MeTTa entry point relative to the simulation."""
     deps = ROOT / ".deps"
     runner = deps / "PeTTa/run.sh"
     if not runner.is_file() or not (deps / "swi/bin/swipl").is_file():
@@ -70,20 +73,25 @@ def run(seed, steps, mode):
     # PeTTa imports relative to the entry file. Use a private temporary file
     # per process so concurrent runs never overwrite one another's arguments.
     with tempfile.NamedTemporaryFile(mode="w", dir=ROOT / "sim", suffix=".metta") as entry:
-        entry.write(f"!(import! &self run)\n!(startCat {seed} {steps} {mode})\n")
+        entry.write(entry_source)
         entry.flush()
         result = subprocess.run(["sh", runner, entry.name, "--silent"], env=env,
                                 text=True, capture_output=True, check=False)
     if result.returncode or result.stderr:
         raise ValueError(f"PeTTa diagnostics (exit {result.returncode}):\n{result.stderr.strip()}")
-    return parse_steps(result.stdout, steps)
+    return result.stdout
+
+
+def run(seed, steps, mode):
+    stdout = run_metta(f"!(import! &self run)\n!(startCat {seed} {steps} {mode})\n")
+    return parse_steps(stdout, steps)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--steps", type=int, default=200)
-    parser.add_argument("--mode", choices=("baseline", "finish"), default="baseline")
+    parser.add_argument("--mode", choices=("baseline", "finish", "reward-attention"), default="baseline")
     parser.add_argument("--out", type=Path, default=Path("runs"))
     args = parser.parse_args()
     if not 0 <= args.seed < 2**32 or args.steps < 1:
@@ -92,7 +100,8 @@ def main():
         rows = run(args.seed, args.steps, args.mode)
     except ValueError as exc:
         parser.exit(1, f"{exc}\n")
-    summary = dict(picker="MetaMo", seed=args.seed, steps=args.steps, mode=args.mode, **summarize(rows))
+    summary = dict(picker="MetaMo", seed=args.seed, steps=args.steps, mode=args.mode,
+                   bouts=summarize_bouts(bout_lengths(rows)), **summarize(rows))
     args.out.mkdir(exist_ok=True, parents=True)
     stem = args.out / f"{args.mode}-{args.seed}-{args.steps}"
     with stem.with_suffix(".csv").open("w", newline="", encoding="utf-8") as file:

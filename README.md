@@ -29,17 +29,17 @@ mkdir -p runs
 grep 'TRADER FINAL' runs/trading.log
 ```
 
-Run all ten cat trials:
+Run all 15 Q1 cat trials (five paired seeds in each mode):
 
 ```sh
 for seed in 1 2 3 4 5; do
-  for mode in baseline finish; do
+  for mode in baseline finish reward-attention; do
     python3 run.py --seed "$seed" --steps 200 --mode "$mode" || exit 1
   done
 done
 ```
 
-Each run writes `runs/<mode>-<seed>-<steps>.csv` and a JSON summary with the same stem. The CSV records end-of-tick room and drives, Paxton's room, action (`move` if traveling), chosen task and its goal, prior task, work counts, and glass status. `work=0` after a non-move action means the task completed. `--out` changes the destination. Identical seeds replay the same schedule of Paxton's room choices in both modes.
+Each run writes `runs/<mode>-<seed>-<steps>.csv` and a JSON summary with the same stem. The CSV records end-of-tick room and drives, Paxton's room, action (`move` if traveling), chosen task and its goal, prior task, work counts, and glass status. `work=0` after a non-move action means the task completed. `--out` changes the destination. Identical seeds replay the same schedule of Paxton's room choices in all three modes. The JSON `bouts` field gives the count, total work ticks and mean length per drive. A bout starts at the first work tick and ends at completion or a switch; the measured part of a bout still open at the last tick is included. Travel does not count.
 
 ## How it works
 
@@ -48,3 +48,4 @@ Each run writes `runs/<mode>-<seed>-<steps>.csv` and a JSON summary with the sam
 - [Sleep and litter](sim/body.metta): tiredness rises **2 points per tick** and resets to zero after **6 work ticks** of sleep in the bedroom. Litter need rises **3 points per tick**, or **8 per tick for the next 5 ticks after finishing a meal**. It resets to zero after **2 work ticks** at the litter box. Both start at zero and cap at 100.
 - [Adapter](sim/adapter.metta): following the trading example, world observations become one stimulus (novelty, conduciveness or how favorable things look, risk, effort) and a menu of actions with goal correlations (how much each action helps each MetaMo goal). The highest of hunger, tiredness, and litter need makes the situation look less favorable as it rises. Sleep and litter use the same MetaMo goals as eating (`gHelp` and `gSelf`): they help Tater Tot take care of herself. The [loop](sim/run.metta) runs the default MetaMo cycle with one subsystem, executes its chosen action, then keeps the returned motivational state. The six drive meters are separate from that internal state. There is no fallback picker.
 - [Q1 measurement](run.py): a flip-flop is a change away from an unfinished task **after work has started**. Leaving any task for litter, or leaving play or sleep for food, is allowed. The summary separates goal changes from switches between toys (same goal), and counts travel replans, play-to-eat switches, and litter interruptions separately. Any switch out of a started, unfinished nap also counts as waking early, even if allowed. `finish` narrows the menu once work has started but keeps those allowed alternatives available to MetaMo. It does not lock in travel plans.
+- [Reward + attention](sim/feedback.metta): `--mode reward-attention` keeps the whole menu. Work captures attention, which then decays. Drive relief gives the task a short-lived reward. The adapter translates both into changes in each candidate's goal correlations (how useful the action looks to MetaMo). MetaMo still picks every action using its regular appraisal, risk scoring and damping. `baseline` is still the default.
