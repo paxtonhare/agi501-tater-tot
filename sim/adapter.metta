@@ -50,5 +50,7 @@
             (if (or (== $id $active) (mayInterrupt $active $id))
                 (cons-atom $head $tail) $tail))))
 (= (chooseCat $states $stimulus $candidates $mode $active $work)
+    (chooseCatWithDamping $states $stimulus $candidates $mode $active $work on))
+(= (chooseCatWithDamping $states $stimulus $candidates $mode $active $work $damping)
     (let $menu (if (and (== $mode finish) (> $work 0)) (taskMenu $candidates $active) $candidates)
-        (runMetaMoCycleDefault (defaultMetaMoBimonad) $states $stimulus $menu () ())))
+        (runMetaMoCycleDefault (catBimonad $damping) $states $stimulus $menu () ())))

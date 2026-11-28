@@ -41,6 +41,8 @@ done
 
 Each run writes `runs/<mode>-<seed>-<steps>.csv` and a JSON summary with the same stem. The CSV records end-of-tick room and drives, Paxton's room, action (`move` if traveling), chosen task and its goal, prior task, work counts, and glass status. `work=0` after a non-move action means the task completed. `--out` changes the destination. Identical seeds replay the same schedule of Paxton's room choices in all three modes. The JSON `bouts` field gives the count, total work ticks and mean length per drive. A bout starts at the first work tick and ends at completion or a switch; the measured part of a bout still open at the last tick is included. Travel does not count.
 
+Use `--damping off` to bypass only MetaMo's homeostatic damping (which shrinks goal updates near an internal safety boundary). It still checks stability, blends states, and projects back into the safe region. Use `--naps off` to remove sleep from the menu and hold tiredness at zero, including for appraisal. Both switches default to `on`.
+
 ## How it works
 
 - [House](sim/house.metta): four rooms with the hallway as the hub. Paxton can change rooms every seven ticks. The food bowl is in the kitchen; the litter box is in the hallway. The glass falls to the floor and resets every twelve ticks; Paxton scolds if present when it falls.

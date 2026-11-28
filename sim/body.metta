@@ -1,4 +1,12 @@
 ;; Sleep and litter world rules. The post-meal clock is separate from the drives.
+;; Removing sleep means no tiredness contribution to appraisal or the menu.
+(= (napLevels on $drives) $drives)
+(= (napLevels off ($h $c $a $m $_ $l)) ($h $c $a $m 0 $l))
+(= (napMenu on $menu) $menu)
+(= (napMenu off $menu)
+    (collapse (let $candidate (superpose $menu)
+        (if (== (actionId $candidate) sleep) (empty) $candidate))))
+
 (= (riseTiredness $tiredness) (min 100 (+ $tiredness 2)))
 (= (riseLitter $litter $afterMeal)
     (min 100 (+ $litter (if (> $afterMeal 0) 8 3))))
