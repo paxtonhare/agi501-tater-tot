@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import sys
 
+from candle import candle_conditions
 from experiment_tables import tables
 
 ROOT = Path(__file__).resolve().parent
@@ -20,9 +21,9 @@ DESIGN = {
     "scolding-memory-on": ("--memory", "on"),
     "bag-novelty-on": ("--bag-tick", "100"),
     "bag-novelty-off": ("--bag-tick", "100", "--novelty", "off"),
-    **{f"candle-{novelty}-{memory}": ("--candle-tick", "100", "--novelty", novelty,
-                                    "--candle-memory", memory)
-       for novelty in ("on", "off") for memory in ("on", "off")},
+    **{case: ("--candle-tick", "100", "--novelty", novelty, "--candle-memory", memory,
+              "--self-preservation", preservation)
+       for case, novelty, memory, preservation in candle_conditions()},
 }
 
 

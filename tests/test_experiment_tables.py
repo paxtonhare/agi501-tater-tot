@@ -6,12 +6,13 @@ from experiments import DESIGN
 
 class ExperimentTableTests(unittest.TestCase):
     def test_design_keeps_scolding_and_candle_recall_separate(self):
-        self.assertEqual(len(DESIGN), 12)
-        for case, flags in DESIGN.items():
-            if case.startswith("candle-"):
-                _, novelty, recall = case.split("-")
-                self.assertEqual(flags, ("--candle-tick", "100", "--novelty", novelty,
-                                         "--candle-memory", recall))
+        self.assertEqual(len(DESIGN), 16)
+        for novelty in ("on", "off"):
+            for recall in ("on", "off"):
+                case = f"candle-{novelty}-{recall}"
+                flags = ("--candle-tick", "100", "--novelty", novelty, "--candle-memory", recall)
+                self.assertEqual(DESIGN[case], (*flags, "--self-preservation", "off"))
+                self.assertEqual(DESIGN[case + "-self-preservation-on"], (*flags, "--self-preservation", "on"))
 
     def test_pool_bouts_by_sample_count_and_time_by_all_ticks(self):
         rows = [dict(steps=10, goal_flip_flops=2, toy_switches=1,
@@ -27,5 +28,6 @@ class ExperimentTableTests(unittest.TestCase):
             ("bag-novelty-on", "bag-novelty-off"), [visit])))
         no_singe = dict(candle=dict(before=0, after=0, pre_ticks=101, post_ticks=0,
                                    singes=0, first_singe=None, final_health=100))
-        out = candle({f"candle-{n}-{m}": [no_singe] for n in ("on", "off") for m in ("on", "off")})
-        self.assertIn("| on | off | 0 / 101 | 0 / 0 | 0 | — | 100 |", out)
+        out = candle({case: [no_singe] for case in DESIGN if case.startswith("candle-")})
+        self.assertIn("| on | off | off | 0 / 101 | 0 / 0 | 0 | — | 100 |", out)
+        self.assertIn("| on | off | on | 0 / 101 | 0 / 0 | 0 | — | 100 |", out)

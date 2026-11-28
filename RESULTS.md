@@ -164,10 +164,31 @@ We exclude the first singe tick from both windows. If no singe happens, all tick
 
 **Log, seed 1, novelty and recall on:** Tick 101: she sniffs (risk 0.14). Tick 102: she singes herself (health 80, fear 100). Tick 103: the candle's risk is 0.90 and she heads toward bed. **Surprise:** even with recall, she sometimes returned. With novelty on and recall off, all five seeds reached zero health. The sim runs to the end at zero health, so it measures injury, not death.
 
+### Follow-up: Does low health make her more careful?
+
+With `--self-preservation on`, every 20 health lost adds 0.20 to the candle's risk, on top of heat, fear, and any recalled singes. The total still caps at 1. The candle is the only action that can lower health here. There is no healing, and MetaMo still weighs the candle against the other choices instead of ruling it out. The switch defaults to off.
+
+Five paired seeds, 200 ticks each, with the candle appearing at tick 100. An approach is a sniff, not a walk toward the candle. Each cell with a slash gives the number of sniffs and the number of ticks in that window, pooled across seeds. All four rows with self-preservation off matched the earlier table.
+
+| Novelty | Singe recall | Self-preservation | Before: approaches / ticks | After: approaches / ticks | Singes | Final health, seeds 1–5 |
+| --- | --- | --- | ---: | ---: | ---: | --- |
+| On | On | Off | 6 / 43 | 14 / 457 | 17 | 20, 40, 20, 40, 40 |
+| On | On | On | 6 / 43 | 14 / 457 | 13 | 20, 60, 40, 60, 60 |
+| On | Off | Off | 6 / 43 | 30 / 457 | 34 | 0, 0, 0, 0, 0 |
+| On | Off | On | 6 / 43 | 16 / 457 | 19 | 20, 40, 20, 20, 20 |
+| Off | On | Off | 6 / 441 | 0 / 63 | 1 | 100, 100, 100, 80, 100 |
+| Off | On | On | 6 / 441 | 0 / 63 | 1 | 100, 100, 100, 80, 100 |
+| Off | Off | Off | 6 / 441 | 0 / 63 | 1 | 100, 100, 100, 80, 100 |
+| Off | Off | On | 6 / 441 | 0 / 63 | 1 | 100, 100, 100, 80, 100 |
+
+**Log, seed 1, novelty on and recall off:** She sniffed at tick 101 and singed herself at tick 102 in both runs. At tick 113 her fear had worn off, but the candle still scored 0.34 risk with self-preservation on, versus 0.14 with it off. She went back and got singed again at tick 121 either way. By tick 200 she had 20 health left with it on and zero with it off.
+
+**Surprise:** With novelty on and recall off, self-preservation kept all five seeds above zero health, but none avoided repeat burns. With both recall and self-preservation on, she sniffed just as often as with recall alone, but fewer sniffs turned into burns. Seed 1 even got singed at tick 181 when perceived risk was already at the maximum. Risk is a penalty, not a ban.
+
 ## Where MeTTa/Hyperon fit well vs caused friction
 
 - **Facts and memory fit well.** Rooms, objects, scoldings and singes use the same fact-and-pattern style. `match` retrieves the event ticks without teaching the scorer about event storage. This repo tested PeTTa, not Hyperon's reference runtime. The pinned PeTTa did not support the upstream example's `(new-space)` call; it treated it as an unevaluated list. A named space with explicit clearing at run start worked.
 - **Install.** Debian's SWI-Prolog 9.0.4 could not load `library(janus)` or find `py_call/2`. Janus is the bridge to MetaMo's NumPy helpers. Building pinned SWI-Prolog 9.3.36 with `swipy` (not `janus` as the package name) worked. `LC_ALL=C.UTF-8` handles the multibyte characters in the upstream source.
 - **Debugging.** Import order mattered: loading the adapter before its new damping helper made a decision expression return no result. PeTTa could exit successfully without a full trace, so Python checks for each expected tick and the final marker rather than trusting the exit code alone.
 - **Performance.** Even one cat inherits MetaMo's appraisal, validation and state-blending work every tick. The 60-trial rerun took about four minutes with three workers on the test VM, not counting setup. The workers run in independent processes and don't share memory. We didn't profile the engine or compare runtimes.
-- **Scoring.** Goal-update damping is not a task lock. Candidate risk is a penalty, not a veto, and it is weighted by MetaMo's current state. Toy interest drops on every play tick, but curiosity drops only when a bout finishes. That interaction is a rule of this cat, not a general result about MetaMo.
+- **Scoring.** Goal-update damping is not a task lock. Candidate risk is a penalty, not a veto, and it is weighted by MetaMo's current state. Toy interest drops on every play tick, but curiosity drops only when a bout finishes. That interaction is a rule of this cat, not a general result about MetaMo. MetaMo has no built-in health meter: PeTTa already tracked the cat's injuries, but they couldn't affect the next choice until the adapter translated missing health into risk.

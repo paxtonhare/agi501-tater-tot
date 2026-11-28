@@ -1,6 +1,7 @@
 """Pool counts across seeds, but never join bouts or latency windows across runs."""
 from collections import Counter
 
+from candle import candle_conditions
 from toys import TOYS, play_entropy
 
 DRIVES = "hunger curiosity affection mischief tiredness litter".split()
@@ -54,15 +55,14 @@ def bag(results):
 
 def candle(results):
     records = []
-    for novelty in ("on", "off"):
-        for memory in ("on", "off"):
-            rows = [r["candle"] for r in results[f"candle-{novelty}-{memory}"]]
-            pre, post, pre_ticks, post_ticks, singes = (sum(r[k] for r in rows) for k in
-                ("before", "after", "pre_ticks", "post_ticks", "singes"))
-            records.append([novelty, memory, f"{pre} / {pre_ticks}", f"{post} / {post_ticks}", singes,
-                            ", ".join(str(show(r["first_singe"])) for r in rows),
-                            ", ".join(str(r["final_health"]) for r in rows)])
-    return table(["Novelty", "Recall", "Before: approaches / ticks", "After: approaches / ticks",
+    for case, novelty, recall, preservation in candle_conditions():
+        rows = [r["candle"] for r in results[case]]
+        pre, post, pre_ticks, post_ticks, singes = (sum(r[k] for r in rows) for k in
+            ("before", "after", "pre_ticks", "post_ticks", "singes"))
+        records.append([novelty, recall, preservation, f"{pre} / {pre_ticks}", f"{post} / {post_ticks}", singes,
+                        ", ".join(str(show(r["first_singe"])) for r in rows),
+                        ", ".join(str(r["final_health"]) for r in rows)])
+    return table(["Novelty", "Recall", "Self-preservation", "Before: approaches / ticks", "After: approaches / ticks",
                   "Singes", "First singe by seed", "Final health by seed"], records)
 
 
