@@ -9,13 +9,14 @@ import subprocess
 import tempfile
 
 from bouts import bout_lengths, summarize_bouts
+from candle import candle_counts
 from toys import TOYS, bag_latency, play_counts, play_entropy
 
 ROOT = Path(__file__).resolve().parent
 DRIVES = "hunger curiosity affection mischief tiredness litter".split()
 FIELDS = ["step", "room", "human_room", *DRIVES, *(
-    "action goal task previous_task previous_work work glass".split())]
-NUMBERS = ["step", *DRIVES, "previous_work", "work"]
+    "action goal task previous_task previous_work work glass health fear candle_risk".split())]
+NUMBERS = ["step", *DRIVES, "previous_work", "work", "health", "fear"]
 
 
 def summarize(rows):
@@ -61,6 +62,7 @@ def parse_steps(stdout, steps):
             row = dict(zip(FIELDS, fields, strict=True))
             for key in NUMBERS:
                 row[key] = int(row[key])
+            row["candle_risk"] = float(row["candle_risk"])
             rows.append(row)
         elif line.startswith("(CAT-DONE "):
             done.append(line)
@@ -88,12 +90,13 @@ def run_metta(entry_source):
     return result.stdout
 
 
-def run(seed, steps, mode, *, damping="on", naps="on", memory="off", novelty="on", bag_tick=0):
-    if any(flag not in {"on", "off"} for flag in (damping, naps, memory, novelty)):
-        raise ValueError("damping, naps, memory and novelty must be on or off")
-    if type(bag_tick) is not int or bag_tick < 0:
-        raise ValueError("bag tick must be a non-negative integer")
-    options = f"({damping} {naps} {memory} {novelty} {bag_tick})"
+def run(seed, steps, mode, *, damping="on", naps="on", memory="off", novelty="on", bag_tick=0, candle_tick=0,
+        candle_memory="off"):
+    if any(flag not in {"on", "off"} for flag in (damping, naps, memory, novelty, candle_memory)):
+        raise ValueError("damping, naps, memory, novelty and candle memory must be on or off")
+    if any(type(tick) is not int or tick < 0 for tick in (bag_tick, candle_tick)):
+        raise ValueError("prop arrival ticks must be non-negative integers")
+    options = f"({damping} {naps} {memory} {novelty} {bag_tick} {candle_tick} {candle_memory})"
     stdout = run_metta(f"!(import! &self run)\n!(startCatConfigured {seed} {steps} {mode} {options})\n")
     return parse_steps(stdout, steps)
 
@@ -108,17 +111,20 @@ def main():
     parser.add_argument("--memory", choices=("on", "off"), default="off")
     parser.add_argument("--novelty", choices=("on", "off"), default="on")
     parser.add_argument("--bag-tick", type=int, default=0, help="tick when the paper bag appears (0 disables it)")
+    parser.add_argument("--candle-tick", type=int, default=0, help="tick when the candle appears (0 disables it)")
+    parser.add_argument("--candle-memory", choices=("on", "off"), default="off")
     parser.add_argument("--out", type=Path, default=Path("runs"))
     args = parser.parse_args()
     if not 0 <= args.seed < 2**32 or args.steps < 1:
         parser.error("seed must be in [0, 2^32) and steps must be positive")
     try:
         rows = run(args.seed, args.steps, args.mode, damping=args.damping, naps=args.naps,
-                   memory=args.memory, novelty=args.novelty, bag_tick=args.bag_tick)
+                   memory=args.memory, novelty=args.novelty, bag_tick=args.bag_tick, candle_tick=args.candle_tick,
+                   candle_memory=args.candle_memory)
     except ValueError as exc:
         parser.exit(1, f"{exc}\n")
     toys = play_counts(rows)
-    summary = dict(novelty=args.novelty, bag_tick=args.bag_tick, play_ticks=toys,
+    summary = dict(candle_tick=args.candle_tick, candle_memory=args.candle_memory, candle=candle_counts(rows, args.candle_tick), novelty=args.novelty, bag_tick=args.bag_tick, play_ticks=toys,
                    play_entropy_bits=play_entropy(toys), bag_latency=bag_latency(rows, args.bag_tick), picker="MetaMo", seed=args.seed, steps=args.steps, mode=args.mode,
                    damping=args.damping, naps=args.naps, memory=args.memory, knocks=knock_counts(rows),
                    bouts=summarize_bouts(bout_lengths(rows)), **summarize(rows))
@@ -132,6 +138,10 @@ def main():
         suffix += "-novelty-off"
     if args.bag_tick:
         suffix += f"-bag{args.bag_tick}"
+    if args.candle_tick:
+        suffix += f"-candle{args.candle_tick}"
+    if args.candle_memory == "on":
+        suffix += "-candle-memory-on"
     stem = args.out / f"{args.mode}{suffix}-{args.seed}-{args.steps}"
     with stem.with_suffix(".csv").open("w", newline="", encoding="utf-8") as file:
         writer = csv.DictWriter(file, FIELDS)

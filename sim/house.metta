@@ -1,5 +1,4 @@
-;; Static locations in the Atomspace. The candle is still a landmark only;
-;; the bag's location is known but its availability is scheduled separately.
+;; Static locations in the Atomspace; prop availability is scheduled separately.
 (room hallway)
 (room kitchen)
 (room living-room)
@@ -12,7 +11,7 @@
 (place cardboard-box living-room)
 (place catnip-mouse bedroom)
 (place paper-bag living-room)
-(stub candle kitchen)
+(place candle kitchen)
 (resident tater-tot)
 (resident paxton)
 
