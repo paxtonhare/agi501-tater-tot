@@ -1,4 +1,14 @@
-"""Measure actual candle encounters, excluding travel and the continuation tick."""
+"""Candle experiment conditions and encounter counts."""
+
+from itertools import product
+
+
+def candle_conditions():
+    for novelty, recall, preservation in product(("on", "off"), ("on", "off"), ("off", "on")):
+        name = f"candle-{novelty}-{recall}"
+        if preservation == "on":
+            name += "-self-preservation-on"
+        yield name, novelty, recall, preservation
 
 
 def candle_counts(rows, arrival):

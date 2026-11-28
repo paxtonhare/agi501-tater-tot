@@ -22,11 +22,13 @@
 !(import! &self novelty)
 !(import! &self bag)
 !(import! &self candle)
+!(import! &self self_preservation)
 
-(= (catLoop $step $limit $mode ($damping $naps $memory $novelty $bagTick $candleTick $candleMemory) $space $states $feedback ($room $oldHuman $drives $toys $oldGlass $active $work $rng $afterMeal ($health $fear)))
+(= (catLoop $step $limit $mode $options $space $states $feedback ($room $oldHuman $drives $toys $oldGlass $active $work $rng $afterMeal ($health $fear)))
     (if (> $step $limit)
         (println! (CAT-DONE $limit))
-        (let* (($nextRng (nextRandom $rng))
+        (let* ((($damping $naps $memory $novelty $bagTick $candleTick $candleMemory $selfPreservation) $options)
+               ($nextRng (nextRandom $rng))
                ($human (humanRoom $step $nextRng $oldHuman))
                ;; Offscreen cleanup: return the glass every 12 ticks.
                ($glass (if (== (% $step 12) 0) table $oldGlass))
@@ -37,8 +39,9 @@
                ($candidates (napMenu $naps (catCandidates $room $human $levels $toys $glass $risk)))
                ($withBag (bagMenu $bagVisible $room $human $levels $toys $candidates))
                ($candleVisible (propVisible $step $candleTick))
-               ($heatRisk (if $candleVisible (candleRisk $candleMemory $space $fear) 0))
-               ($withProps (candleMenu $candleVisible $room $human $levels $heatRisk $withBag))
+               ($candleRisk (if $candleVisible
+                    (injuryAdjustedRisk $selfPreservation $health (candleRisk $candleMemory $space $fear)) 0))
+               ($withProps (candleMenu $candleVisible $room $human $levels $candleRisk $withBag))
                ($adjusted (noveltyMenu $novelty $withProps))
                ($menu (if (== $mode reward-attention) (applyCatFeedback $adjusted $feedback) $adjusted))
                ($result (chooseCatWithDamping $states $stimulus $menu $mode $active $work $damping))
@@ -53,13 +56,13 @@
                     (updateCatFeedback $task $action $levels ($nh $nc $na $nm $nt $nl) $feedback) $feedback))
                ($allowed (if (and (> $work 0) (not (== $active $task))) (mayInterrupt $active $task) false))
                ($_ (println! (CAT $step $newRoom $human $nh $nc $na $nm $nt $nl $verb (taskGoal $task)
-                                  $task $active $work $nextWork $newGlass $nextHealth $nextFear $heatRisk $allowed))))
-            (catLoop (+ $step 1) $limit $mode ($damping $naps $memory $novelty $bagTick $candleTick $candleMemory) $space (cycleNextStates $result) $nextFeedback
+                                  $task $active $work $nextWork $newGlass $nextHealth $nextFear $candleRisk $allowed))))
+            (catLoop (+ $step 1) $limit $mode $options $space (cycleNextStates $result) $nextFeedback
                      ($newRoom $human ($nh $nc $na $nm $nt $nl) $newToys $newGlass
                       $nextTask $nextWork $nextRng $nextClock ($nextHealth $nextFear))))))
 
 (= (startCat $seed $steps $mode)
-    (startCatConfigured $seed $steps $mode (on on off on 0 0 off)))
+    (startCatConfigured $seed $steps $mode (on on off on 0 0 off off)))
 (= (startCatConfigured $seed $steps $mode $options)
     (let $_ (clearCatEvents &cat-memory)
         (catLoop 1 $steps $mode $options &cat-memory (catStates) (initialFeedback)

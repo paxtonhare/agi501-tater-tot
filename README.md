@@ -29,7 +29,7 @@ mkdir -p runs
 grep 'TRADER FINAL' runs/trading.log
 ```
 
-After installing the Debian packages above, rerun the final-report matrix (60 trials). The script calls `setup.sh` if the toolchain is missing:
+After installing the Debian packages above, rerun the final-report matrix (80 trials). The script calls `setup.sh` if the toolchain is missing:
 
 ```sh
 python3 experiments.py --jobs 3
@@ -41,7 +41,7 @@ Each run writes `runs/<mode>-<seed>-<steps>.csv` and a JSON summary with the sam
 
 Use `--damping off` to bypass only MetaMo's homeostatic damping (which shrinks goal updates near an internal safety boundary). It still checks stability, blends states, and projects back into the safe region. Use `--naps off` to remove sleep from the menu and hold tiredness at zero, including for appraisal. Both switches default to `on`.
 
-Use `--memory on` to recall scoldings when scoring the knock candidate, and `--novelty off` to remove the candidate's novelty-goal (`gNovel`) contribution without disabling curiosity or toy interest. Use `--bag-tick 100` or `--candle-tick 100` to enable the corresponding prop from tick 100. Heat and short-lived fear count even with recall off; `--candle-memory on` adds remembered singes independently of scolding recall. Both prop arrivals and both types of recall are off by default.
+Use `--memory on` to recall scoldings when scoring the knock candidate, and `--novelty off` to remove the candidate's novelty-goal (`gNovel`) contribution without disabling curiosity or toy interest. Use `--bag-tick 100` or `--candle-tick 100` to enable the corresponding prop from tick 100. Heat and short-lived fear count even with recall off; `--candle-memory on` adds remembered singes independently of scolding recall. Both prop arrivals and both types of recall are off by default. Use `--self-preservation on` to raise the candle's risk as health falls; it's the only action that can lower health in this simulation. This is off by default and doesn't add healing or remove the candle from the menu.
 
 ## How it works
 
