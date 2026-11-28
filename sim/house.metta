@@ -1,5 +1,5 @@
-;; Static house facts in the Atomspace. The glass can be knocked down;
-;; the bag and candle are landmarks only, not action candidates yet.
+;; Static locations in the Atomspace. The candle is still a landmark only;
+;; the bag's location is known but its availability is scheduled separately.
 (room hallway)
 (room kitchen)
 (room living-room)
@@ -11,7 +11,7 @@
 (place zip-tie kitchen)
 (place cardboard-box living-room)
 (place catnip-mouse bedroom)
-(stub paper-bag living-room)
+(place paper-bag living-room)
 (stub candle kitchen)
 (resident tater-tot)
 (resident paxton)
