@@ -19,8 +19,10 @@
 !(import! &self adapter)
 !(import! &self feedback)
 !(import! &self memory)
+!(import! &self novelty)
+!(import! &self bag)
 
-(= (catLoop $step $limit $mode $damping $naps $memory $space $states $feedback ($room $oldHuman $drives $toys $oldGlass $active $work $rng $afterMeal))
+(= (catLoop $step $limit $mode ($damping $naps $memory $novelty $bagTick) $space $states $feedback ($room $oldHuman $drives $toys $oldGlass $active $work $rng $afterMeal))
     (if (> $step $limit)
         (println! (CAT-DONE $limit))
         (let* (($nextRng (nextRandom $rng))
@@ -28,10 +30,13 @@
                ;; Offscreen cleanup: return the glass every 12 ticks.
                ($glass (if (== (% $step 12) 0) table $oldGlass))
                ($levels (napLevels $naps (rise $drives $afterMeal)))
-               ($stimulus (catStimulus $room $human $oldHuman $levels $toys $glass))
+               ($bagVisible (propVisible $step $bagTick))
+               ($stimulus (catStimulus $room $human $oldHuman $levels $toys $glass $bagVisible))
                ($risk (if (== $glass table) (recallScoldingRisk $memory $space $human) 0))
                ($candidates (napMenu $naps (catCandidates $room $human $levels $toys $glass $risk)))
-               ($menu (if (== $mode reward-attention) (applyCatFeedback $candidates $feedback) $candidates))
+               ($withBag (bagMenu $bagVisible $room $human $levels $toys $candidates))
+               ($adjusted (noveltyMenu $novelty $withBag))
+               ($menu (if (== $mode reward-attention) (applyCatFeedback $adjusted $feedback) $adjusted))
                ($result (chooseCatWithDamping $states $stimulus $menu $mode $active $work $damping))
                ($task (actionId (cycleFinalAction $result)))
                (($newRoom ($nh $nc $na $nm $nt $nl) $newToys $newGlass $nextTask $nextWork $action)
@@ -42,13 +47,13 @@
                     (updateCatFeedback $task $action $levels ($nh $nc $na $nm $nt $nl) $feedback) $feedback))
                ($_ (println! (CAT $step $newRoom $human $nh $nc $na $nm $nt $nl $action (taskGoal $task)
                                   $task $active $work $nextWork $newGlass))))
-            (catLoop (+ $step 1) $limit $mode $damping $naps $memory $space (cycleNextStates $result) $nextFeedback
+            (catLoop (+ $step 1) $limit $mode ($damping $naps $memory $novelty $bagTick) $space (cycleNextStates $result) $nextFeedback
                      ($newRoom $human ($nh $nc $na $nm $nt $nl) $newToys $newGlass
                       $nextTask $nextWork $nextRng $nextClock)))))
 
 (= (startCat $seed $steps $mode)
-    (startCatConfigured $seed $steps $mode on on off))
-(= (startCatConfigured $seed $steps $mode $damping $naps $memory)
+    (startCatConfigured $seed $steps $mode (on on off on 0)))
+(= (startCatConfigured $seed $steps $mode $options)
     (let $_ (clearCatEvents &cat-memory)
-        (catLoop 1 $steps $mode $damping $naps $memory &cat-memory (catStates) (initialFeedback)
-                 (hallway hallway (25 25 25 25 0 0) (100 100 100) table none 0 $seed 0))))
+        (catLoop 1 $steps $mode $options &cat-memory (catStates) (initialFeedback)
+                 (hallway hallway (25 25 25 25 0 0) (100 100 100 100) table none 0 $seed 0))))

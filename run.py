@@ -9,13 +9,13 @@ import subprocess
 import tempfile
 
 from bouts import bout_lengths, summarize_bouts
+from toys import TOYS, bag_latency, play_counts, play_entropy
 
 ROOT = Path(__file__).resolve().parent
 DRIVES = "hunger curiosity affection mischief tiredness litter".split()
 FIELDS = ["step", "room", "human_room", *DRIVES, *(
     "action goal task previous_task previous_work work glass".split())]
 NUMBERS = ["step", *DRIVES, "previous_work", "work"]
-TOYS = {"zip-tie", "cardboard-box", "catnip-mouse"}
 
 
 def summarize(rows):
@@ -88,10 +88,13 @@ def run_metta(entry_source):
     return result.stdout
 
 
-def run(seed, steps, mode, *, damping="on", naps="on", memory="off"):
-    if any(flag not in {"on", "off"} for flag in (damping, naps, memory)):
-        raise ValueError("damping, naps and memory must be on or off")
-    stdout = run_metta(f"!(import! &self run)\n!(startCatConfigured {seed} {steps} {mode} {damping} {naps} {memory})\n")
+def run(seed, steps, mode, *, damping="on", naps="on", memory="off", novelty="on", bag_tick=0):
+    if any(flag not in {"on", "off"} for flag in (damping, naps, memory, novelty)):
+        raise ValueError("damping, naps, memory and novelty must be on or off")
+    if type(bag_tick) is not int or bag_tick < 0:
+        raise ValueError("bag tick must be a non-negative integer")
+    options = f"({damping} {naps} {memory} {novelty} {bag_tick})"
+    stdout = run_metta(f"!(import! &self run)\n!(startCatConfigured {seed} {steps} {mode} {options})\n")
     return parse_steps(stdout, steps)
 
 
@@ -103,15 +106,20 @@ def main():
     parser.add_argument("--damping", choices=("on", "off"), default="on")
     parser.add_argument("--naps", choices=("on", "off"), default="on")
     parser.add_argument("--memory", choices=("on", "off"), default="off")
+    parser.add_argument("--novelty", choices=("on", "off"), default="on")
+    parser.add_argument("--bag-tick", type=int, default=0, help="tick when the paper bag appears (0 disables it)")
     parser.add_argument("--out", type=Path, default=Path("runs"))
     args = parser.parse_args()
     if not 0 <= args.seed < 2**32 or args.steps < 1:
         parser.error("seed must be in [0, 2^32) and steps must be positive")
     try:
-        rows = run(args.seed, args.steps, args.mode, damping=args.damping, naps=args.naps, memory=args.memory)
+        rows = run(args.seed, args.steps, args.mode, damping=args.damping, naps=args.naps,
+                   memory=args.memory, novelty=args.novelty, bag_tick=args.bag_tick)
     except ValueError as exc:
         parser.exit(1, f"{exc}\n")
-    summary = dict(picker="MetaMo", seed=args.seed, steps=args.steps, mode=args.mode,
+    toys = play_counts(rows)
+    summary = dict(novelty=args.novelty, bag_tick=args.bag_tick, play_ticks=toys,
+                   play_entropy_bits=play_entropy(toys), bag_latency=bag_latency(rows, args.bag_tick), picker="MetaMo", seed=args.seed, steps=args.steps, mode=args.mode,
                    damping=args.damping, naps=args.naps, memory=args.memory, knocks=knock_counts(rows),
                    bouts=summarize_bouts(bout_lengths(rows)), **summarize(rows))
     args.out.mkdir(exist_ok=True, parents=True)
@@ -120,6 +128,10 @@ def main():
         suffix += "-naps-off"
     if args.memory == "on":
         suffix += "-memory-on"
+    if args.novelty == "off":
+        suffix += "-novelty-off"
+    if args.bag_tick:
+        suffix += f"-bag{args.bag_tick}"
     stem = args.out / f"{args.mode}{suffix}-{args.seed}-{args.steps}"
     with stem.with_suffix(".csv").open("w", newline="", encoding="utf-8") as file:
         writer = csv.DictWriter(file, FIELDS)

@@ -4,9 +4,9 @@
      (riseTiredness $t) (riseLitter $l $afterMeal)))
 (= (recoverInterest $used $toy $interest)
     (if (== $used $toy) (max 0 (- $interest 25)) (min 100 (+ $interest 4))))
-(= (updateToys ($zip $box $mouse) $used)
+(= (updateToys ($zip $box $mouse $bag) $used)
     ((recoverInterest $used zip-tie $zip) (recoverInterest $used cardboard-box $box)
-     (recoverInterest $used catnip-mouse $mouse)))
+     (recoverInterest $used catnip-mouse $mouse) (recoverInterest $used paper-bag $bag)))
 
 ;; These are task IDs; active goal is the drive that task serves.
 (= (taskGoal eat) hunger)
